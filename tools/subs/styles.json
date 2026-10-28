@@ -1,0 +1,47 @@
+{
+  "Классика": {},
+  "Только по слову": {
+    "ladder_words": 0
+  },
+  "Лесенка из 5 слов": {
+    "ladder_words": 5
+  },
+  "Жёлтые": {
+    "color": "#FFD400"
+  },
+  "Без субтитров": {
+    "none": true
+  },
+  "Dudu Cyrillic": {
+    "font": "Dudu Cyryllic",
+    "font_file": "fonts/Dudu Cyrillic.ttf"
+  },
+  "Gogol": {
+    "font": "Gogol",
+    "font_file": "fonts/Gogol Regular.ttf"
+  },
+  "Leonov": {
+    "font": "Leonov SP",
+    "font_file": "fonts/Leonov.otf"
+  },
+  "Liana": {
+    "font": "Liana",
+    "font_file": "fonts/Liana.ttf"
+  },
+  "Pushkin": {
+    "font": "Pushkin",
+    "font_file": "fonts/Pushkin.ttf"
+  },
+  "Rimma Sans": {
+    "font": "Rimma_sans Bold",
+    "font_file": "fonts/Rimma Sans.TTF"
+  },
+  "SC Jurerê": {
+    "font": "SC Jurerê",
+    "font_file": "fonts/SC Jurere.otf"
+  },
+  "Sweet Mavka": {
+    "font": "Sweet Mavka Script",
+    "font_file": "fonts/Sweet Mavka.otf"
+  }
+}

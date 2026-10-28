@@ -1,0 +1,19 @@
+{
+  "Холодный": {
+    "from_config": true
+  },
+  "Старый Голливуд": {
+    "sat": 0.22,
+    "contrast": 1.18,
+    "shadows_r": 0.05,
+    "shadows_b": -0.07,
+    "mid_r": 0.08,
+    "mid_b": -0.09,
+    "black_lift": 0.07,
+    "white_cap": 0.93,
+    "vignette": 0.7
+  },
+  "Без фильтра": {
+    "none": true
+  }
+}

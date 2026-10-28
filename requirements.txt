@@ -1,0 +1,11 @@
+# Windows 10/11, Python 3.10+
+nicegui>=3.0
+pywebview          # окно приложения (без него — запуск с --browser)
+opencv-python      # поиск лица, кадры, нарезка
+numpy
+Pillow
+psutil
+certifi
+# необязательно: айфон-часть («Очередь Edits») и вопросы в Telegram
+# pymobiledevice3
+# telethon

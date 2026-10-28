@@ -1,0 +1,47 @@
+{
+  "subtitles": {
+    "font": "Arial Black",
+    "size": 145,
+    "bold": false,
+    "font_file": "C:/Windows/Fonts/ariblk.ttf",
+    "italic": false,
+    "color": "#FFFFFF",
+    "outline_color": "#000000",
+    "outline": 7,
+    "shadow": 3,
+    "blur": 1.5,
+    "case": "lower",
+    "max_text_width": 990,
+    "ladder_size": 160,
+    "single_size": 150,
+    "wipe_min": 0.15,
+    "wipe_max": 0.45,
+    "fade_in": 0.1,
+    "ladder_words": 3,
+    "ladder_y": 1060,
+    "ladder_step": 150,
+    "ladder_hold": 0.25,
+    "single_y": 1585,
+    "max_gap": 0.25,
+    "single_uniform": true
+  },
+  "reframe": {
+    "body_per_face": 5.5,
+    "bg_blur": 40,
+    "bg_dim": -0.08
+  },
+  "grade": {
+    "saturation": 0.78,
+    "contrast": 1.06,
+    "shadows_r": -0.04,
+    "shadows_b": 0.07,
+    "mid_r": -0.04,
+    "mid_b": 0.05,
+    "black_lift": 0.04,
+    "white_cap": 0.96
+  },
+  "music": {
+    "below_voice_db": 8,
+    "voice_target_lufs": -16
+  }
+}
