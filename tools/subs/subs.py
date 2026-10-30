@@ -119,12 +119,36 @@ def build(words, cfg, adj=None):
         Сияние (gi > 0) — вторая строка под текстом: размытая широкая обводка нужного цвета."""
         a = a or {}
         blur = f"\\blur{cfg['blur']}" if cfg["blur"] else ""
+        # жёсткая граница (30.10.2026): ни одна буква не ближе 10 px к краю кадра — ни при каких условиях (как в предпросмотре)
+        import math
+        from PIL import ImageFont
+        mfont = ImageFont.truetype(cfg_for(a, cfg)["font_file"], 100)
+        asc, desc = mfont.getmetrics()
+        em = 100 / (asc + desc)                                  # ASS-размер — высота строки, реальные буквы меньше
+        tw100 = mfont.getlength(txt) / 100 * em
+        mg = cfg.get("edge_margin", 10)
+        rad = math.radians(a.get("r") or 0)
+        ca, sa = abs(math.cos(rad)), abs(math.sin(rad))
+        ol = 2 * (a["ow"] if a.get("ow") is not None else cfg["outline"])
+
+        def bbox(sz):
+            tw, th = tw100 * sz, sz * em * 1.1
+            return tw * ca + th * sa + ol, tw * sa + th * ca + ol
+
+        bw, bh = bbox(size)
+        f = min((W - 2 * mg) / bw, (H - 2 * mg) / bh, 1)
+        if f < 1:
+            size = int(size * f)
+            bw, bh = bbox(size)
+        cx = int(min(max(cx, mg + bw / 2), W - mg - bw / 2))
+        y = int(min(max(y, mg + bh / 2), H - mg - bh / 2))
 
         def anim(pad, vpad):
             if wipe:
                 from PIL import ImageFont
                 tw = ImageFont.truetype(str(HERE / cfg_for(a, cfg)["font_file"]), size).getlength(txt)
-                x0, x1 = int(cx - tw / 2 - pad), int(cx + tw / 2 + pad)
+                over = size * 0.35   # наклонные/рукописные шрифты выступают за ширину текста — иначе маска срезает последние буквы
+                x0, x1 = int(cx - tw / 2 - pad - over), int(cx + tw / 2 + pad + over)
                 top, bot = int(y - size - vpad), int(y + size + vpad)
                 return f"\\clip({x0},{top},{x0},{bot})\\t(0,{int(wipe * 1000)},\\clip({x0},{top},{x1},{bot}))"
             return f"\\fad({int(cfg['fade_in'] * 1000)},0)"
@@ -160,14 +184,45 @@ def build(words, cfg, adj=None):
     scfg = cfg_for(single_adj, cfg)
     usize = min((fit_size(shown(w["t"], cfg), cfg["single_size"], scfg) for w in rest), default=cfg["single_size"]) \
         if cfg.get("single_uniform", True) else None
-    for i, w in enumerate(rest):
-        nxt = rest[i + 1]["s"] if i + 1 < len(rest) else w["e"] + 0.3
-        end = max(w["e"], min(nxt, w["e"] + cfg["max_gap"]))
-        start = max(w["s"], lad[-1]["e"] + cfg["ladder_hold"]) if lad and i == 0 else w["s"]
-        txt = shown(w["t"], cfg)
+    # Правило против наплывов (30.10.2026): слово, которому не хватает времени — экран ещё занят лесенкой или предыдущим словом,
+    # и до конца слова меньше min_show — встаёт в одну строку со следующим («слово1 слово2»), а не налезает и не пропадает.
+    def end_of(k):
+        nxt = rest[k + 1]["s"] if k + 1 < len(rest) else rest[k]["e"] + 0.3
+        return max(rest[k]["e"], min(nxt, rest[k]["e"] + cfg["max_gap"]))
+
+    min_show = cfg.get("min_show", 0.3)
+    free = lad[-1]["e"] + cfg["ladder_hold"] if lad else 0.0   # когда освободится экран
+    i = 0
+    while i < len(rest):
+        start = max(rest[i]["s"], free)
+        j = i + 1 if (end_of(i) - start < min_show and i + 1 < len(rest)) else i
+        end = max(end_of(j), start + 0.15)
+        txt = " ".join(shown(rest[k]["t"], cfg) for k in range(i, j + 1))
+        size = usize or fit_size(txt, cfg["single_size"], scfg)
+        if j > i:                                               # пара шире одного слова — размер по ней
+            pair = fit_size(txt, cfg["single_size"], scfg)
+            base = usize or cfg["single_size"]
+            if pair < base * cfg.get("stack_ratio", 0.75):      # в строку не влезает без сильного уменьшения — слова друг над другом
+                ws = [shown(rest[k]["t"], cfg) for k in range(i, j + 1)]
+                sz = min(base, min(fit_size(w, cfg["single_size"], scfg) for w in ws))
+                # один размер на оба слова: и с учётом границы кадра (длинное слово не должно делать другое мельче)
+                from PIL import ImageFont
+                mf = ImageFont.truetype(cfg_for(single_adj, cfg)["font_file"], 100)
+                ol = 2 * (single_adj["ow"] if single_adj.get("ow") is not None else cfg["outline"])
+                asc2, desc2 = mf.getmetrics()
+                lim = min((W - 2 * cfg.get("edge_margin", 10) - ol) / (mf.getlength(w) / 100 * 100 / (asc2 + desc2)) for w in ws)
+                fsz = int(min(sz * single_adj.get("s", 1), lim))
+                for n, w in enumerate(ws):
+                    yy = cfg["single_y"] + round(single_adj.get("dy", 0)) + round((n - (len(ws) - 1) / 2) * fsz * 100 / (asc2 + desc2) * cfg.get("stack_gap", 1.0))
+                    ev.append(line(start, end, w, yy, fsz,
+                                   cx=W // 2 + round(single_adj.get("dx", 0)), a=single_adj))
+                free, i = end, j + 1
+                continue
+            size = min(size, pair)
         ev.append(line(start, end, txt, cfg["single_y"] + round(single_adj.get("dy", 0)),
-                       round((usize or fit_size(txt, cfg["single_size"], scfg)) * single_adj.get("s", 1)),
+                       round(size * single_adj.get("s", 1)),
                        cx=W // 2 + round(single_adj.get("dx", 0)), a=single_adj))
+        free, i = end, j + 1
     return head + "".join(ev)
 
 

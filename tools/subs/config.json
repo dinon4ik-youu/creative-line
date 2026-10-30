@@ -23,7 +23,8 @@
     "ladder_hold": 0.25,
     "single_y": 1585,
     "max_gap": 0.25,
-    "single_uniform": true
+    "single_uniform": true,
+    "min_show": 0.3
   },
   "reframe": {
     "body_per_face": 5.5,

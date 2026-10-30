@@ -30,7 +30,7 @@ window.SashaPrev = (() => {
     padding:4px 10px;font-size:15px;cursor:pointer}
   .sp-pause{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:54px;color:#fff;opacity:.85;
     pointer-events:none;text-shadow:0 0 12px #000;display:none}
-  .sp-tl{position:relative;height:150px;user-select:none;touch-action:none;color:#aaa;font:11px monospace}
+  .sp-tl{position:relative;height:178px;user-select:none;touch-action:none;color:#aaa;font:11px monospace}
   .sp-tl-track{position:absolute;left:0;right:0;top:40px;height:46px;background:#1b2128;border-radius:6px;overflow:hidden;cursor:pointer}
   .sp-tl-dim{position:absolute;top:0;bottom:0;background:rgba(0,0,0,.62)}
   .sp-tl-act{position:absolute;top:0;bottom:0;background:rgba(245,197,24,.16);border-top:2px solid #f5c518;border-bottom:2px solid #f5c518;
@@ -44,17 +44,18 @@ window.SashaPrev = (() => {
   .sp-tl-lab{position:absolute;top:10px;transform:translateX(-50%);color:#ff8a80;white-space:nowrap}
   .sp-tl-tick{position:absolute;top:30px;width:1px;height:8px;background:#555}
   .sp-tl-tickl{position:absolute;top:16px;transform:translateX(-50%);color:#666}
-  .sp-tl-info{position:absolute;right:0;top:136px;color:#999}
+  .sp-tl-info{position:absolute;left:0;top:152px;color:#999}
   .sp-tl-hint{position:absolute;left:0;top:136px;color:#777}
   .sp-tl-music{position:absolute;left:0;right:0;top:94px;height:34px;background:#1b2128;border-radius:6px;overflow:hidden;cursor:grab}
   .sp-tl-music canvas{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none}
   .sp-tl-mlab{position:absolute;left:8px;top:2px;color:#9fd39f;font:11px monospace;pointer-events:none;text-shadow:0 0 3px #000}
+  .sp-ebtn.sp-al-on{background:#f5c518;border-color:#f5c518}.sp-ebtn.sp-al-on rect{fill:#111}
   .sp-ebtn{background:#2a323b;color:#ddd;border:1px solid #444;border-radius:6px;padding:3px 10px;cursor:pointer;font:13px sans-serif}
   .sp-ebtn:hover{background:#38424d}
   .sp-selbox{position:absolute;border:1.5px solid #fff;pointer-events:none;box-sizing:border-box;display:none;z-index:4}
-  .sp-handle{position:absolute;width:12px;height:12px;border-radius:50%;background:#fff;pointer-events:auto;box-shadow:0 0 0 1px rgba(0,0,0,.45)}
-  .sp-handle.nw{left:-7px;top:-7px;cursor:nwse-resize}.sp-handle.se{right:-7px;bottom:-7px;cursor:nwse-resize}
-  .sp-handle.ne{right:-7px;top:-7px;cursor:nesw-resize}.sp-handle.sw{left:-7px;bottom:-7px;cursor:nesw-resize}
+  .sp-handle{position:absolute;width:9px;height:9px;border-radius:50%;background:#fff;pointer-events:auto;box-shadow:0 0 0 1px rgba(0,0,0,.45)}
+  .sp-handle.nw{left:-5px;top:-5px;cursor:nwse-resize}.sp-handle.se{right:-5px;bottom:-5px;cursor:nwse-resize}
+  .sp-handle.ne{right:-5px;top:-5px;cursor:nesw-resize}.sp-handle.sw{left:-5px;bottom:-5px;cursor:nesw-resize}
   .sp-rotline{position:absolute;left:50%;bottom:-18px;width:1.5px;height:18px;background:#fff;margin-left:-1px}
   .sp-rot{position:absolute;left:50%;bottom:-40px;margin-left:-11px;width:22px;height:22px;border-radius:50%;background:#fff;color:#111;
     font:15px/22px sans-serif;text-align:center;pointer-events:auto;cursor:grab;box-shadow:0 0 0 1px rgba(0,0,0,.45)}
@@ -76,13 +77,20 @@ window.SashaPrev = (() => {
   .sp-sty.on{background:#f5c518;color:#111;border-color:#f5c518}
   `;
 
+  function killPrev(S) {                                 // остановить цикл, видео и музыку закрытого окна (иначе музыка играет сама после «Одобрить и дальше»)
+    if (!S) return;
+    S.stop = true;
+    try { if (S.audio) { S.audio.pause(); S.audio.src = ""; S.audio = null; } } catch (e) { /* уже остановлено */ }
+    for (const v of [S.fg, S.bg]) { try { if (v) v.pause(); } catch (e) { /* уже остановлено */ } }
+  }
+
   function mount(id, d) {
     const root = document.getElementById(id);
     if (!root) return;
     if (!document.getElementById("sp-css")) {
       const st = document.createElement("style"); st.id = "sp-css"; st.textContent = CSS; document.head.appendChild(st);
     }
-    if (P[id]) P[id].stop = true;                       // старый цикл этого окна — остановить
+    for (const k of Object.keys(P)) killPrev(P[k]);       // старые окна (прошлый кусок) — остановить вместе с музыкой
     root.innerHTML = "";
     const K = d.width / 1080;
     const S = P[id] = Object.assign({id, K, stop: false, sound: false, ev: [], dragging: false}, d);
@@ -97,22 +105,41 @@ window.SashaPrev = (() => {
     S.subs = document.createElement("div"); S.subs.className = "sp-subs";
     const tint = S.tint = document.createElement("div"); tint.className = "sp-tint";
     S.pause = document.createElement("div"); S.pause.className = "sp-pause"; S.pause.textContent = "⏸";
-    S.snd = document.createElement("button"); S.snd.className = "sp-btn"; S.snd.textContent = "🔇";
+    S.snd = document.createElement("button"); S.snd.className = "sp-btn"; S.snd.textContent = "🔇 П"; S.snd.title = "Звук вкл/выкл — клавиша П";
     S.snd.onclick = ev => { ev.stopPropagation(); setSound(S, !S.sound); };
     S.selbox = buildSelBox(S);
     box.append(S.bg, S.clip, tint, S.subs, S.selbox, S.pause, S.snd);
     S.box = box; S.adj = S.adj || {};
+    S.hist0 = snap(S); S.hist = [S.hist0]; S.redo = [];
     box.onclick = () => togglePlay(S);
     box.oncontextmenu = ev => { ev.preventDefault(); S.sel = null; editVisuals(S); };   // правый клик по пустому месту — снять выделение
+    box.style.margin = "0 auto";                         // кадр по центру колонки, под ним — таймлиния на всю ширину колонки
     root.append(box);
+    S.tlHost = document.createElement("div");            // таймлиния прямо под предпросмотром (а не внизу страницы)
+    S.tlHost.style.cssText = "width:100%;margin-top:6px";
+    root.append(S.tlHost);
     S.props = buildProps(S);
     root.append(S.props);
     window.__spActive = S;
     if (window.__spKey) document.removeEventListener("keydown", window.__spKey);
     window.__spKey = ev => {                              // пробел — пауза / воспроизведение
-      if (ev.code !== "Space" || ev.ctrlKey || ev.altKey || ev.metaKey) return;
+      if ((ev.ctrlKey || ev.metaKey) && !ev.altKey && (["я", "Я", "z", "Z", "н", "Н", "y", "Y"].includes(ev.key) || ev.code === "KeyZ" || ev.code === "KeyY")) {
+        const tg = ev.target, ac = window.__spActive;
+        if (tg && (["INPUT", "TEXTAREA", "SELECT"].includes(tg.tagName) || tg.isContentEditable)) return;
+        if (ac && !ac.stop && document.body.contains(ac.box)) { ev.preventDefault(); undoRedo(ac, ev.shiftKey || ev.code === "KeyY" || ["н", "Н", "y", "Y"].includes(ev.key)); }
+        return;
+      }
+      const snd = ["п", "П", "p", "P"].includes(ev.key) || ev.code === "KeyG";     // П (и латинская P) — звук вкл/выкл
+      const apr = ["у", "У"].includes(ev.key) || ev.code === "KeyE";                // У — «Одобрить и дальше»
+      if ((ev.code !== "Space" && !snd && !apr) || ev.ctrlKey || ev.altKey || ev.metaKey) return;
       const t = ev.target, a = window.__spActive;
       if (t && (["INPUT", "TEXTAREA", "SELECT"].includes(t.tagName) || t.isContentEditable)) return;
+      if (apr) {
+        const btn = [...document.querySelectorAll("button")].find(x => x.offsetParent !== null && x.textContent.includes("Одобрить и дальше"));
+        if (btn && a && !a.stop) { ev.preventDefault(); btn.click(); }
+        return;
+      }
+      if (snd) { if (a && !a.stop && document.body.contains(a.box) && a.box.offsetParent !== null) { ev.preventDefault(); setSound(a, !a.sound); } return; }
       if (!a || a.stop || !document.body.contains(a.box) || a.box.offsetParent === null) return;
       if (document.activeElement && document.activeElement.tagName === "BUTTON") document.activeElement.blur();   // пробел не должен нажать кнопку
       ev.preventDefault(); togglePlay(a);
@@ -122,7 +149,7 @@ window.SashaPrev = (() => {
     layout(S); buildSubs(S); applyFilter(S); setMusic(S, d.music || ""); buildTimeline(S);
     S.fg.addEventListener("loadedmetadata", () => { if (!S.dur) S.dur = S.fg.duration; seek(S, S.ta); S.fg.play().catch(() => {}); S.bg.play().catch(() => {}); });
     const tick = () => {
-      if (S.stop || !document.body.contains(box)) return;
+      if (S.stop || !document.body.contains(box)) { killPrev(S); return; }
       const t = S.fg.currentTime;
       if (!S.dragging) {
         if (!S.fg.paused && (t >= S.tb - 0.03 || t < S.ta - 0.3)) seek(S, S.ta);
@@ -158,7 +185,7 @@ window.SashaPrev = (() => {
 
   // ---------- таймлиния ----------
   function buildTimeline(S) {
-    const host = S.tl && document.getElementById(S.tl);
+    const host = S.tlHost || (S.tl && document.getElementById(S.tl));
     if (!host) return;
     host.innerHTML = "";
     const w = S.tlw = document.createElement("div"); w.className = "sp-tl";
@@ -171,7 +198,8 @@ window.SashaPrev = (() => {
     S.words.forEach(wd => { const m = document.createElement("div"); m.className = "sp-tl-word";
       m.style.left = ((wd.s + wd.e) / 2 / S.dur * 100) + "%"; track.appendChild(m); S.wordEls = (S.wordEls || []).concat(m); });
     track.appendChild(S.head);
-    track.onpointerdown = ev => { if (ev.target !== S.hA && ev.target !== S.hB) seekAt(S, ev); };
+    track.style.touchAction = "none"; track.style.cursor = "ew-resize";
+    track.onpointerdown = ev => { if (ev.target !== S.hA && ev.target !== S.hB) startScrub(S, ev); };
     w.appendChild(track);
     const mrow = S.mrow = document.createElement("div"); mrow.className = "sp-tl-music";
     S.wave = document.createElement("canvas");
@@ -195,7 +223,7 @@ window.SashaPrev = (() => {
     }
     S.info = Object.assign(document.createElement("div"), {className: "sp-tl-info"});
     const hint = Object.assign(document.createElement("div"), {className: "sp-tl-hint",
-      textContent: "красные линии — границы ролика; затемнённое — запас, тяни линию, чтобы подтянуть"});
+      textContent: "тяни по линейке — кадр идёт за курсором; красные линии — границы ролика"});
     w.append(S.info, hint);
     host.appendChild(w);
     placeTimeline(S, S.fg.currentTime || 0);
@@ -225,6 +253,29 @@ window.SashaPrev = (() => {
   };
 
   function seekAt(S, ev) { seek(S, timeAt(S, ev)); }
+
+  // зажал на линейке и тащишь туда-сюда — кадр, субтитры и музыка идут за курсором; отпустил — как было (шло — идёт, стояло — стоит)
+  function startScrub(S, ev) {
+    ev.preventDefault();
+    const tr = S.track;
+    try { tr.setPointerCapture(ev.pointerId); } catch (e) { /* синтетическое событие без активного указателя */ }
+    const wasPlaying = !S.fg.paused;
+    S.dragging = true;
+    S.fg.pause(); S.bg.pause(); if (S.audio) S.audio.pause();
+    S.pause.style.display = "block";
+    const go = e2 => { const t = clamp(timeAt(S, e2), S.ta, S.tb); seek(S, t); placeTimeline(S, t); };
+    go(ev);
+    const up = () => {
+      tr.removeEventListener("pointermove", go); tr.removeEventListener("pointerup", up); tr.removeEventListener("pointercancel", up);
+      S.dragging = false;
+      if (wasPlaying) {
+        S.fg.play().catch(() => {}); S.bg.play().catch(() => {});
+        if (S.audio && S.sound) { syncAudio(S, S.fg.currentTime, true); S.audio.play().catch(() => {}); }
+        S.pause.style.display = "none";
+      }
+    };
+    tr.addEventListener("pointermove", go); tr.addEventListener("pointerup", up); tr.addEventListener("pointercancel", up);
+  }
 
   function startDrag(S, k, h, ev) {
     ev.preventDefault(); ev.stopPropagation();
@@ -335,8 +386,28 @@ window.SashaPrev = (() => {
   function place(S, v) {
     const a = adjOf(S, v), K = S.K, c = S.sub, st = v.el.style, fam = a.font || c.font;
     const em = (S.ems && S.ems[fam]) || c.em_ratio || 1;   // ASS-размер — высота строки, в браузере нужен размер буквы
-    st.left = (540 + a.dx) * K + "px"; st.top = (v.y + a.dy) * K + "px";
-    st.fontSize = v.size * a.s * K * em + "px"; st.fontFamily = `"${fam}"`; st.color = a.color || c.color;
+    // жёсткая граница: ни одна буква не заходит ближе 10 px к краю кадра (1080×1920) — ни при каких условиях (как в subs.py)
+    const MG = c.edge_margin === undefined ? 10 : c.edge_margin, tw100 = textW(v.txt, 100, fam) / 100;
+    const rad = (a.r || 0) * Math.PI / 180, ca = Math.abs(Math.cos(rad)), sa = Math.abs(Math.sin(rad)), ol = 2 * (a.ow !== undefined ? a.ow : c.outline);
+    const bbox = sz => { const tw = tw100 * sz * em, th = sz * em * 1.1; return {bw: tw * ca + th * sa + ol, bh: tw * sa + th * ca + ol}; };
+    let size = v.size * a.s, bb = bbox(size);
+    let f = Math.min((1080 - 2 * MG) / bb.bw, (1920 - 2 * MG) / bb.bh, 1);
+    if (v.grp) for (const m of v.grp) {                   // слова друг над другом — один размер: по самому «тесному»
+      const t100 = textW(m.txt, 100, fam) / 100, sz0 = v.size * a.s, tw = t100 * sz0 * em, th = sz0 * em * 1.1;
+      f = Math.min(f, (1080 - 2 * MG) / (tw * ca + th * sa + ol), (1920 - 2 * MG) / (tw * sa + th * ca + ol));
+    }
+    if (f < 1) { size = Math.floor(size * f); bb = bbox(size); }
+    const cx = Math.min(Math.max(540 + a.dx, MG + bb.bw / 2), 1080 - MG - bb.bw / 2);
+    // слова друг над другом: расстояние = высота букв + небольшой зазор, от реального (а не базового) размера
+    const stackOff = v.grp ? (v.gi - (v.grp.length - 1) / 2) * size * em * (c.stack_gap === undefined ? 1.0 : c.stack_gap) : 0;
+    const cy = Math.min(Math.max(v.y + a.dy + stackOff, MG + bb.bh / 2), 1920 - MG - bb.bh / 2);
+    if (v.kind === "ladder" && !S.noClampWrite && (Math.abs(cx - 540 - a.dx) > .5 || Math.abs(cy - v.y - a.dy - stackOff) > .5 || f < 1)) {   // запоминаем уже поправленное: ползунок и рамка показывают правду
+      const g = group(S, v); g.dx = Math.round(cx - 540); g.dy = Math.round(cy - v.y - stackOff);
+      if (f < 1) g.s = Math.round(size / v.size * 1000) / 1000;
+    }
+    // невидимая область слова — только по тексту (lineHeight 1, без отступов)
+    st.lineHeight = "1"; st.padding = "0"; st.left = cx * K + "px"; st.top = cy * K + "px";
+    st.fontSize = size * K * em + "px"; st.fontFamily = `"${fam}"`; st.color = a.color || c.color;
     st.fontWeight = (a.b !== undefined ? a.b : !!c.bold) ? "700" : "400";
     st.fontStyle = (a.i !== undefined ? a.i : !!c.italic) ? "italic" : "normal";
     st.textDecoration = a.u ? "underline" : "none";
@@ -393,12 +464,31 @@ window.SashaPrev = (() => {
     // один размер на все слова после лесенки (single_uniform), как в subs.py
     const usize = c.single_uniform === false || !rest.length ? null
       : Math.min(...rest.map(w => fit(w.t, c.single_size, sinA.font)));
-    rest.forEach((w, i) => {
-      const nxt = i + 1 < rest.length ? rest[i + 1].s : w.e + 0.3;
-      const end = Math.max(w.e, Math.min(nxt, w.e + c.max_gap));
-      const start = lad.length && i === 0 ? Math.max(w.s, lad[lad.length - 1].e + c.ladder_hold) : w.s;
-      add(shown(w.t), start, end, c.single_y, usize || fit(w.t, c.single_size, sinA.font), 0, "single", i);
-    });
+    // правило против наплывов, как в subs.py: слово, которому не хватает времени, встаёт в одну строку со следующим
+    const endOf = k => { const nx = k + 1 < rest.length ? rest[k + 1].s : rest[k].e + 0.3; return Math.max(rest[k].e, Math.min(nx, rest[k].e + c.max_gap)); };
+    const minShow = c.min_show === undefined ? 0.3 : c.min_show;
+    let free = lad.length ? lad[lad.length - 1].e + c.ladder_hold : 0, i = 0, si = 0;
+    while (i < rest.length) {
+      const start = Math.max(rest[i].s, free);
+      const j = (endOf(i) - start < minShow && i + 1 < rest.length) ? i + 1 : i;
+      const end = Math.max(endOf(j), start + 0.15);
+      const raw = rest.slice(i, j + 1).map(w => w.t).join(" ");
+      let size = usize || fit(raw, c.single_size, sinA.font);
+      if (j > i) {
+        const pair = fit(raw, c.single_size, sinA.font), base = usize || c.single_size;
+        if (pair < base * (c.stack_ratio === undefined ? 0.75 : c.stack_ratio)) {   // не влезает в строку без сильного уменьшения — слова друг над другом
+          const ws = rest.slice(i, j + 1).map(w => w.t);
+          const sz = Math.min(base, ...ws.map(w => fit(w, c.single_size, sinA.font)));
+          const sc = sinA.s || 1;
+          ws.forEach((w, n) => add(shown(w), start, end, c.single_y, sz, 0, "single", si++));
+          const grp = S.ev.slice(-ws.length); grp.forEach((x, n) => { x.grp = grp; x.gi = n; place(S, x); });   // расстояние между строками считает place() по реальному размеру
+          free = end; i = j + 1; continue;
+        }
+        size = Math.min(size, pair);
+      }
+      add(shown(raw), start, end, c.single_y, size, 0, "single", si++);
+      free = end; i = j + 1;
+    }
     editVisuals(S);
   }
 
@@ -411,7 +501,8 @@ window.SashaPrev = (() => {
       v.el.style.display = on ? "block" : "none";
       if (!on) continue;
       const op = v.op === undefined ? 1 : v.op;
-      if (v.wipe && !all) { const p = clamp((t - v.s) / v.wipe, 0, 1); v.el.style.clipPath = `inset(-60% ${(1 - p) * 100}% -60% -30%)`; v.el.style.opacity = op; }
+      // справа запас -30%: наклонные шрифты выступают за блок
+      if (v.wipe && !all) { const p = clamp((t - v.s) / v.wipe, 0, 1); v.el.style.clipPath = `inset(-60% ${(1 - p) * 130 - 30}% -60% -30%)`; v.el.style.opacity = op; }
       else if (v.wipe) { v.el.style.clipPath = "none"; v.el.style.opacity = op; }
       else { v.el.style.clipPath = "none"; v.el.style.opacity = op * clamp((t - v.s) / (S.sub.fade_in || .1), 0, 1); }
     }
@@ -438,6 +529,7 @@ window.SashaPrev = (() => {
     const rot = document.createElement("div"); rot.className = "sp-rot"; rot.textContent = "⟳"; rot.onpointerdown = ev => startRotate(S, ev);
     sb.append(line, rot);
     sb.oncontextmenu = ev => ev.preventDefault();
+    sb.onclick = ev => ev.stopPropagation();             // отпустил уголок/кружок — это не клик по кадру, пауза не снимается
     return sb;
   }
 
@@ -448,7 +540,7 @@ window.SashaPrev = (() => {
     const e = cur.el, a = adjOf(S, cur);
     sb.style.display = "block";
     sb.style.left = e.style.left; sb.style.top = e.style.top;
-    sb.style.width = e.offsetWidth + 16 + "px"; sb.style.height = e.offsetHeight + 8 + "px";
+    sb.style.width = e.offsetWidth + 4 + "px"; sb.style.height = e.offsetHeight + 2 + "px";   // рамка почти вплотную к слову
     sb.style.transform = `translate(-50%,-50%) rotate(${a.r}deg)`;
   }
 
@@ -459,7 +551,7 @@ window.SashaPrev = (() => {
     const d0 = Math.hypot(ev.clientX - cx, ev.clientY - cy) || 1, g = group(S, v), s0 = g.s || 1, h = ev.target;
     try { h.setPointerCapture(ev.pointerId); } catch (e) { /* синтетическое событие */ }
     const move = e2 => {
-      g.s = clamp(Math.round(s0 * Math.hypot(e2.clientX - cx, e2.clientY - cy) / d0 * 1000) / 1000, 0.3, 3);
+      g.s = clamp(Math.round(s0 * Math.hypot(e2.clientX - cx, e2.clientY - cy) / d0 * 1000) / 1000, 0.3, 6);
       members(S, v).forEach(x => place(S, x)); syncProps(S);
     };
     const up = () => { h.removeEventListener("pointermove", move); h.removeEventListener("pointerup", up); emitAdj(S); };
@@ -509,7 +601,7 @@ window.SashaPrev = (() => {
     rf.append(S.fontbtn, S.fontlist);
     // размер
     const rs = row("Размер");
-    S.size = document.createElement("input"); S.size.type = "range"; S.size.min = "0.3"; S.size.max = "3"; S.size.step = "0.05";
+    S.size = document.createElement("input"); S.size.type = "range"; S.size.min = "0.3"; S.size.max = "6"; S.size.step = "0.05";
     S.sizeVal = document.createElement("span"); S.sizeVal.style.cssText = "width:48px;text-align:right";
     S.size.oninput = () => applyProp(S, "s", parseFloat(S.size.value) === 1 ? null : parseFloat(S.size.value), false);
     S.size.onchange = () => emitAdj(S);
@@ -570,6 +662,25 @@ window.SashaPrev = (() => {
     const rb = document.createElement("button"); rb.className = "sp-ebtn"; rb.textContent = "↺ сбросить выбранное"; rb.tabIndex = -1;
     rb.onmousedown = e => e.preventDefault(); rb.onclick = () => S.sel && resetSel(S, S.sel);
     rr.appendChild(rb);
+    // сопоставление слов лесенки (как в CapCut): по горизонтали — левый край / центр / правый край, по вертикали — блок вверх / середина / вниз
+    const al = document.createElement("div"); al.style.cssText = "display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding-top:6px";
+    const alLab = document.createElement("span"); alLab.className = "sp-plab"; alLab.style.width = "90px"; alLab.textContent = "Сопоставление"; al.appendChild(alLab);
+    S.alBtns = {};
+    const mkIc = (bars, mode, title, vertical) => {
+      const b = document.createElement("button"); S.alBtns[mode] = b; b.className = "sp-ebtn"; b.tabIndex = -1; b.title = title; b.style.cssText = "padding:4px 8px;line-height:0";
+      const svg = bars.map(([x, y, w, h]) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="1" fill="#ddd"/>`).join("");
+      b.innerHTML = `<svg width="22" height="18" viewBox="0 0 22 18">${svg}</svg>`;
+      b.onmousedown = e => e.preventDefault(); b.onclick = () => alignLadder(S, mode);
+      al.appendChild(b);
+    };
+    mkIc([[2, 2, 14, 3], [2, 7, 9, 3], [2, 12, 12, 3]], "l", "Лесенка: по левому краю");
+    mkIc([[4, 2, 14, 3], [6.5, 7, 9, 3], [5, 12, 12, 3]], "c", "Лесенка: по центру");
+    mkIc([[6, 2, 14, 3], [11, 7, 9, 3], [8, 12, 12, 3]], "r", "Лесенка: по правому краю");
+    const sep = document.createElement("span"); sep.style.cssText = "width:10px"; al.appendChild(sep);
+    mkIc([[3, 2, 3, 12], [9, 2, 3, 8], [15, 2, 3, 10]], "t", "Лесенка целиком: вверх кадра", true);
+    mkIc([[3, 3, 3, 12], [9, 5, 3, 8], [15, 4, 3, 10]], "m", "Лесенка целиком: в середину кадра", true);
+    mkIc([[3, 4, 3, 12], [9, 8, 3, 8], [15, 6, 3, 10]], "b", "Лесенка целиком: вниз кадра", true);
+    wrap.appendChild(al);
     const hint = document.createElement("div"); hint.style.cssText = "color:#777;font-size:12px";
     hint.textContent = "Выделить слово: клик, правая кнопка мыши или нажатие двумя пальцами на тачпаде. Тянешь слово — двигаешь, угол рамки — размер, " +
       "кружок под рамкой — поворот, колесо мыши — размер. Пробел — пауза. Всё сохраняется сразу.";
@@ -613,7 +724,31 @@ window.SashaPrev = (() => {
     if (emit) emitAdj(S);
   }
 
+  // откат правок субтитров: Ctrl+Я (Ctrl+Z) — назад, Ctrl+Shift+Я (Ctrl+Y) — вернуть
+  const snap = S => JSON.stringify({ladder: S.adj.ladder || [], single: S.adj.single || {}});
+  function pushHist(S) {
+    S.hist = S.hist || [snap0(S)]; S.redo = S.redo || [];
+    const cur = snap(S);
+    if (cur === S.hist[S.hist.length - 1]) return;
+    const now = Date.now();
+    // серия правок подряд (колесо мыши, ползунок, перетаскивание с паузами меньше 1,2 с) — один шаг отката
+    if (S.hist.length > 1 && S.histT && now - S.histT < 1200) S.hist[S.hist.length - 1] = cur;
+    else { S.hist.push(cur); if (S.hist.length > 200) S.hist.shift(); }
+    S.histT = now; S.redo = [];
+  }
+  const snap0 = S => S.hist0 || snap(S);
+  function undoRedo(S, redo) {
+    S.hist = S.hist || [snap(S)]; S.redo = S.redo || [];
+    if (redo) { if (!S.redo.length) return; S.hist.push(S.redo.pop()); }
+    else { if (S.hist.length < 2) return; S.redo.push(S.hist.pop()); }
+    S.adj = JSON.parse(S.hist[S.hist.length - 1]); S.histT = 0;
+    buildSubs(S); S.sel = null; editVisuals(S);
+    if (typeof emitEvent === "function") emitEvent("sasha_adj", {id: S.eid, adj: {ladder: (S.adj.ladder || []).map(a => a || {}), single: S.adj.single || {}}});
+  }
+
   function emitAdj(S) {
+    if (!S.aligning && S.alOn) { S.alOn = {}; markAlign(S); }   // руками подвинул — сопоставление уже не «выбрано»
+    pushHist(S);
     if (typeof emitEvent !== "function") return;
     emitEvent("sasha_adj", {id: S.eid, adj: {ladder: (S.adj.ladder || []).map(a => a || {}), single: S.adj.single || {}}});
   }
@@ -635,9 +770,29 @@ window.SashaPrev = (() => {
 
   function scaleSel(S, v, f) {
     const g = group(S, v);
-    g.s = clamp(Math.round((g.s || 1) * f * 1000) / 1000, 0.3, 3);
+    g.s = clamp(Math.round((g.s || 1) * f * 1000) / 1000, 0.3, 6);
     members(S, v).forEach(x => place(S, x));
     S.sel = v; editVisuals(S); emitAdj(S);
+  }
+
+  function markAlign(S) {                                // подсветить выбранное сопоставление
+    for (const [m, b] of Object.entries(S.alBtns || {})) b.classList.toggle("sp-al-on", m === (S.alOn || {}).h || m === (S.alOn || {}).v);
+  }
+  function alignLadder(S, mode) {                        // сопоставление слов лесенки между собой / блока в кадре
+    const lad = S.ev.filter(x => x.kind === "ladder");
+    if (!lad.length) return;
+    const box = lad.map(v => { const a = adjOf(S, v), fam = a.font || S.sub.font, size = v.size * a.s;
+      const tw = textW(v.txt, 100, fam) / 100 * size; return {v, a, tw, cx: 540 + a.dx, y: v.y + a.dy, h: size}; });
+    if ("lcr".includes(mode)) {
+      const L = Math.min(...box.map(b => b.cx - b.tw / 2)), R = Math.max(...box.map(b => b.cx + b.tw / 2));
+      for (const b of box) { const nc = mode === "l" ? L + b.tw / 2 : mode === "r" ? R - b.tw / 2 : (L + R) / 2; group(S, b.v).dx = Math.round(nc - 540); }
+    } else {
+      const top = Math.min(...box.map(b => b.y - b.h / 2)), bot = Math.max(...box.map(b => b.y + b.h / 2));
+      const d = mode === "t" ? 160 - top : mode === "b" ? 1780 - bot : 960 - (top + bot) / 2;
+      for (const b of box) group(S, b.v).dy = Math.round(b.a.dy + d);
+    }
+    S.alOn = S.alOn || {}; S.alOn["lcr".includes(mode) ? "h" : "v"] = mode;
+    S.aligning = true; buildSubs(S); emitAdj(S); S.aligning = false; markAlign(S);
   }
 
   function resetSel(S, v) {
@@ -670,7 +825,7 @@ window.SashaPrev = (() => {
   }
 
   function setSound(S, on) {
-    S.sound = on; S.snd.textContent = on ? "🔊" : "🔇"; S.fg.muted = !on;
+    S.sound = on; S.snd.textContent = on ? "🔊 П" : "🔇 П"; S.snd.title = "Звук вкл/выкл — клавиша П"; S.fg.muted = !on;
     if (S.audio) { if (on && !S.fg.paused) { syncAudio(S, S.fg.currentTime, true); S.audio.play().catch(() => {}); } else S.audio.pause(); }
   }
 

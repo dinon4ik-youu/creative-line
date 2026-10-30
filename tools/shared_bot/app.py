@@ -1451,6 +1451,7 @@ def split_page():
 
 
 PREVIEW_W = 360   # ширина предпросмотра 9:16, px (холст ролика — 1080×1920)
+LEFT_W = 600      # ширина левой колонки: кадр по центру, под ним таймлиния (30.10.2026, просьба Димы)
 
 
 SASHA_UI = {}   # обработчики текущего окна правок (событие sasha_trim от таймлинии приходит из браузера)
@@ -1479,11 +1480,12 @@ def sasha_workspace(e):
         return f"{int(t // 60)}:{t % 60:04.1f}"
 
     with ui.row().classes("w-full gap-6 no-wrap items-start"):
-        with ui.column().classes("gap-2 shrink-0").style(f"width:{PREVIEW_W}px"):
+        with ui.column().classes("gap-2 shrink-0").style(f"width:{LEFT_W}px"):
             view = ui.toggle({"live": "Предпросмотр", "out": "Готовый ролик"}, value="live") \
                 .props("dense no-caps unelevated color=grey-8 text-color=grey-3 toggle-color=amber "
                        "toggle-text-color=black").classes("rounded overflow-hidden")
-            live = ui.element("div").style(f"width:{PREVIEW_W}px")
+            approve_row = ui.row().classes("gap-2 items-center")   # «Одобрить и дальше» — наверху, на уровне видео (30.10.2026)
+            live = ui.element("div").style(f"width:{LEFT_W}px")
             out = ui.column().classes("gap-1").style(f"width:{PREVIEW_W}px")
             with out:
                 if e["status"] == "done" and Path(e["out"]).is_file():
@@ -1562,7 +1564,7 @@ def sasha_workspace(e):
             fslider.on("change", lambda: SA.set_filter(e["id"], fsel.value, fslider.value))   # сохраняем, когда отпустил ползунок
 
             # ---- границы куска ----
-            ui.label(f"Границы куска — время в исходном видео. Тяни красные линии на таймлинии внизу; "
+            ui.label(f"Границы куска — время в исходном видео. Тяни красные линии на таймлинии под предпросмотром; "
                      f"скачано с запасом ±{sasha.MARGIN:g} с, дальше расширить нельзя.") \
                 .classes("text-xs text-gray-500")
             tinfo = ui.label().classes("text-xs text-gray-400")
@@ -1578,7 +1580,10 @@ def sasha_workspace(e):
             opts = {"": "Без музыки", **{t: t for t in SA.tracks()}}
             if cur not in opts:
                 opts[cur] = cur + " (нет файла)"
-            msel = ui.select(opts, value=cur, label="Музыка").props("outlined dense").classes("w-full")
+            with ui.row().classes("w-full items-center no-wrap gap-2"):
+                msel = ui.select(opts, value=cur, label="Музыка").props("outlined dense").classes("flex-grow")
+                ui.button(icon="add", on_click=lambda: up.run_method("pickFiles")) \
+                    .props("unelevated dense color=amber text-color=black").tooltip("Добавить свой трек в библиотеку (mp3, wav, m4a…)")
 
             def on_music(ev):
                 err = SA.set_item_music(e["id"], ev.value or "")
@@ -1614,8 +1619,8 @@ def sasha_workspace(e):
                 ui.notify(f"Трек «{got}» добавлен в библиотеку", type="positive")
 
             ui.add_css(".sasha-up .q-uploader__list{display:none} .sasha-up{max-height:56px;min-height:0}")
-            ui.upload(label="Добавить трек в библиотеку (mp3, wav, m4a…)", auto_upload=True, on_upload=on_upload) \
-                .props("accept=.mp3,.wav,.m4a,.aac,.ogg,.flac flat dense").classes("w-full sasha-up")
+            up = ui.upload(label="Добавить трек", auto_upload=True, on_upload=on_upload) \
+                .props("accept=.mp3,.wav,.m4a,.aac,.ogg,.flac flat dense").classes("sasha-up").style("display:none")
 
             # ---- стиль субтитров (список — tools/subs/styles.json) ----
             def on_style(ev):
@@ -1691,12 +1696,13 @@ def sasha_workspace(e):
                 if await dlg:
                     ui.notify(f"Применил к {SA.apply_defaults()} кускам, пересобираю…", type="positive")
 
-            with ui.row().classes("gap-3 items-center"):
+            with approve_row:
                 if e.get("approved"):
                     ui.label("✓ Одобрено").classes("text-green-400")
-                    ui.button("Снять одобрение", on_click=lambda: SA.approve(e["id"], False)).props("outline no-caps color=grey")
+                    ui.button("Снять одобрение", on_click=lambda: SA.approve(e["id"], False)).props("outline no-caps color=grey dense")
                 elif e["status"] == "done":
-                    ui.button("✓ Одобрить и дальше", on_click=approve).props("unelevated no-caps color=green")
+                    ui.button("✓ Одобрить и дальше (У)", on_click=approve).props("unelevated no-caps color=green")
+            with ui.row().classes("gap-3 items-center"):
                 ui.button("★ Запомнить как стиль по умолчанию", on_click=save_defaults).props("outline no-caps")
                 ui.button("Применить его ко всем непроверенным", on_click=apply_all).props("outline no-caps")
             d = SA.s.get("defaults")
